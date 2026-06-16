@@ -1,261 +1,152 @@
-# 📊 SaaS Analytics with PostgreSQL
+# SaaS Analytics with PostgreSQL
 
-> **A comprehensive demonstration of how PostgreSQL and SQL queries can answer critical growth and marketing questions for SaaS businesses**
+A self-contained, Docker-ready PostgreSQL analytics demo built around a realistic SaaS project-management app (Free / Basic / Premium plans). It ships with a complete relational schema, 1,000+ rows of realistic generated sample data, 50+ ready-to-run SQL queries, and an interactive Jupyter notebook with visualizations — everything needed to explore MRR, churn, conversion funnels, retention, and growth-channel performance with a single command.
 
-This repository demonstrates the power of PostgreSQL for SaaS analytics by providing a realistic database schema, sample data, and comprehensive SQL queries that answer key growth questions for a project management SaaS application.
+## Features
 
-Run the entire project with a single command: `docker compose up`
+- **One-command setup** — `docker compose up` spins up PostgreSQL, an interactive Jupyter notebook, and (optionally) pgAdmin
+- **Realistic relational schema** covering users, plans, subscriptions, projects, tasks, team memberships, revenue events, user activities, and funnel events
+- **Generated sample data**: 1,000 users, 1,000+ subscriptions, ~1,900 projects, ~10,700 tasks, 500 team memberships, and 600+ revenue events spanning 12 months
+- **50+ analytics queries** in `analytics_queries.sql` covering revenue, MRR/ARR, conversion, retention, churn, activation, engagement, channel performance, and a full growth-metrics dashboard
+- **Interactive Jupyter notebook** (`notebooks/SaaS_Analytics_Demo.ipynb`) with Plotly/Matplotlib/Seaborn visualizations, pre-connected to the database
+- **Entity-relationship diagram generator** (`generate_erd.py`) for visualizing the schema
+- **Quick CLI dashboard** (`quick_dashboard.py`) for a fast, no-notebook snapshot of key metrics
+- **Helper scripts** for native (non-Docker) PostgreSQL setup and project validation
 
-The SQL queries included in this project are inspired by a large scale real-world project I developed for an enterprise client.
+## Schema Overview
 
-**You are most welcome to use this code in your commercial projects, all that I ask in return is that you credit my work by providing a link back to this repository. Thank you & Enjoy!**
+![Schema Diagram](readme_assets/schema_diagram_readme.png)
 
-## ✨ Key Features
+| Table | Purpose |
+|---|---|
+| `users` | Core accounts: signup/activation timestamps, status, signup channel, UTM attribution, country, referrals |
+| `plans` | Plan definitions: Free, Basic, Premium — pricing, limits, and feature flags (JSONB) |
+| `subscriptions` | Subscription history: plan, billing cycle, status, MRR, start/end/cancellation dates |
+| `projects` | Core product usage — one row per project a user creates |
+| `tasks` | Task-level engagement within projects |
+| `team_memberships` | Collaboration/invite tracking for viral growth analysis |
+| `revenue_events` | Individual financial transactions (payment, refund, upgrade, downgrade) |
+| `user_activities` | Generic behavioral event log (logins, project/task creation, invites, etc.) with JSONB metadata |
+| `funnel_events` | Conversion funnel tracking: signup → email verified → onboarding → first project → payment → subscription |
 
-- 🐳 **One-Command Setup** - `docker compose up` gets everything running
-- 📊 **Interactive Jupyter Notebook** - Visual analytics with Plotly charts
-- 🗄️ **Realistic Database** - 1000+ users, 12 months of behavioral data
-- 💰 **50+ SQL Queries** - All critical SaaS metrics covered
-- 📈 **Beautiful Visualizations** - MRR trends, cohort retention, conversion funnels
-- 🎯 **Production-Ready Schema** - Optimized indexes and relationships
-- 🌍 **Multi-dimensional Analysis** - Channel, geographic, and plan-based insights
+The schema also includes two convenience views (`current_subscriptions`, `monthly_cohorts`) and a `calculate_mrr(date)` SQL function for point-in-time MRR calculations.
 
+## Prerequisites
 
-## 🚀 Quick Start
+- Docker and Docker Compose (recommended path)
+- *or*, for a native setup: PostgreSQL 15+, `psql`, and Python 3.9+
 
-### One-Command Setup with Docker 🐳
-
-**The easiest way to get started:**
+## Quick Start (Docker, recommended)
 
 ```bash
-git clone <your-repo-url>
-cd postgres_demo
+git clone <repo-url>
+cd saas-analytics-postgres
 docker compose up
 ```
 
-That's it! This single command will:
-- ✅ Start PostgreSQL with sample data (1000+ users, 12 months history)
-- ✅ Launch Jupyter notebook with interactive analytics
-- ✅ Set up all necessary Python libraries for visualization
-- ✅ Make everything accessible via your browser
+This single command starts:
+- PostgreSQL, pre-loaded with the schema and 1,000+ rows of 12-month sample data
+- A Jupyter notebook server with all analytics libraries pre-installed
 
-**Access the services:**
-- 📊 **Jupyter Notebook**: http://localhost:8888 (Interactive analytics dashboard)
-- 🗄️ **PostgreSQL**: localhost:5432 (Direct database access)
-- 🔧 **pgAdmin** (optional): `docker compose --profile pgadmin up` → http://localhost:8080
+Once running (~30 seconds):
 
-### Prerequisites
-- Docker and Docker Compose installed
-- 2GB free disk space
-- Web browser
+- **Jupyter Notebook**: open [http://localhost:8888](http://localhost:8888) and run `SaaS_Analytics_Demo.ipynb`
+- **PostgreSQL**: `psql -h localhost -p 5432 -U saas_user -d saas_analytics_demo` (password: `demo_password`)
+- **pgAdmin** (optional): `docker compose --profile pgadmin up`, then visit [http://localhost:8080](http://localhost:8080)
 
-### Alternative: Manual Setup
+Stop everything with `docker compose down`, or `docker compose down -v` to also wipe the database volume.
 
-If you prefer to install PostgreSQL locally:
+## Native Setup (without Docker)
 
 ```bash
+pip install -r requirements.txt
 ./setup_database.sh
 ```
 
-This script will:
-- ✅ Create a PostgreSQL database with sample data
-- ✅ Set up realistic user journeys and subscription patterns
-- ✅ Generate schema documentation and diagrams
-- ✅ Verify the installation with key metrics
+The script checks for a running PostgreSQL instance, creates the database/user, applies `schema.sql`, loads `sample_data.sql`, verifies row counts, and (if Graphviz is installed) generates a schema diagram. Run `./setup_database.sh --reset` to drop and recreate the database from scratch.
 
-### Manual Setup
-If you prefer manual setup:
+## Repository Structure
 
-1. **Create the database:**
-   ```sql
-   CREATE DATABASE saas_analytics_demo;
-   CREATE USER saas_user WITH PASSWORD 'demo_password';
-   GRANT ALL PRIVILEGES ON DATABASE saas_analytics_demo TO saas_user;
-   ```
+```
+.
+├── docker-compose.yml          # Postgres + Jupyter (+ optional pgAdmin) services
+├── Dockerfile                  # Jupyter image with analytics libraries
+├── wait-for-postgres.sh        # Entrypoint helper: waits for DB before starting Jupyter
+├── schema.sql                  # Full PostgreSQL schema: tables, types, indexes, views, functions
+├── sample_data.sql             # Generates realistic 12-month sample dataset
+├── analytics_queries.sql       # 50+ SQL queries answering key SaaS growth questions
+├── key_questions.md            # The business questions this project is designed to answer
+├── notebooks/
+│   └── SaaS_Analytics_Demo.ipynb  # Interactive analysis & visualizations
+├── generate_erd.py             # Generates an ERD from the live schema (requires Graphviz)
+├── quick_dashboard.py          # CLI snapshot of key metrics (no notebook required)
+├── setup_database.sh           # Native (non-Docker) database setup script
+├── project_summary.sh          # Validates repo completeness and prints a project overview
+├── readme_assets/
+│   └── schema_diagram_readme.png
+├── requirements.txt
+├── .env.example
+└── LICENSE
+```
 
-2. **Load the schema:**
-   ```bash
-   psql -U saas_user -d saas_analytics_demo -f schema.sql
-   ```
+## Analytics Covered
 
-3. **Import sample data:**
-   ```bash
-   psql -U saas_user -d saas_analytics_demo -f sample_data.sql
-   ```
+The queries in `analytics_queries.sql` and the notebook answer questions such as:
 
-4. **Generate schema diagram:**
-   ```bash
-   python3 generate_erd.py
-   ```
+- **Revenue**: sales volume per plan over various windows, MRR/ARR by plan, ARPU, LTV by plan
+- **Conversion**: free-to-paid conversion rate, time-to-upgrade, conversion by signup channel
+- **Retention & churn**: cohort retention curves, monthly churn rate by plan
+- **Activation & engagement**: activation rate, feature usage depth (projects/tasks/team invites) by plan
+- **Growth & channels**: full signup → activation → paid funnel with drop-off, channel and geographic performance
+- **Operational snapshot**: a single "key metrics dashboard" query combining the above into one view
 
-## 🏗️ Database Schema
+See `key_questions.md` for the full list of business questions this schema and query set is designed to support.
 
-Our schema models a realistic SaaS project management application with three subscription tiers:
+## Example Query
 
-### Core Entities
-- **👥 Users** - Customer accounts with signup attribution
-- **💳 Subscriptions** - Plan history and billing information  
-- **📋 Projects** - User-created projects (core product value)
-- **✅ Tasks** - Project tasks (engagement indicator)
-- **👫 Team Memberships** - Collaboration features
-- **💰 Revenue Events** - All financial transactions
-- **📊 Analytics Events** - User behavior tracking
-
-### Subscription Plans
-- **🆓 Free** - $0/month (3 projects, 1 team member)
-- **⭐ Basic** - $9.99/month (10 projects, 5 team members)
-- **🚀 Premium** - $19.99/month (unlimited projects and team members)
-
-![Database Schema](readme_assets/schema_diagram_readme.png)
-
-## 📊 Interactive Jupyter Notebook
-
-**NEW!** All analytics queries are now available in an interactive, visual Jupyter notebook!
-
-After running `docker compose up`, open your browser to **http://localhost:8888** to access:
-
-- 📊 **Interactive visualizations** with Plotly and Matplotlib
-- 🔍 **Step-by-step analysis** of all key SaaS metrics
-- 📈 **Beautiful charts** for MRR, churn, conversion, and retention
-- 🎯 **Complete conversion funnels** with visual flow
-- 🌍 **Geographic and channel performance** analysis
-- 💡 **Customer Lifetime Value (LTV)** calculations
-
-The notebook (`notebooks/SaaS_Analytics_Demo.ipynb`) covers:
-1. Key Metrics Overview Dashboard
-2. Revenue & MRR Analytics  
-3. Conversion & Upgrade Analysis
-4. Retention & Churn Tracking
-5. Engagement & Activation Metrics
-6. Marketing Channel Performance
-7. Customer Lifetime Value
-8. Complete Conversion Funnel
-
-## 📈 Analytics Capabilities
-
-### Revenue Analytics
 ```sql
--- Monthly Recurring Revenue by Plan
-SELECT 
+-- Current MRR by plan
+SELECT
     p.name as plan,
-    SUM(CASE 
+    COUNT(s.id) as active_subscriptions,
+    SUM(CASE
         WHEN s.billing_cycle = 'monthly' THEN s.mrr
         WHEN s.billing_cycle = 'annual' THEN s.mrr / 12
+        ELSE s.mrr
     END) as monthly_recurring_revenue
 FROM subscriptions s
 JOIN plans p ON s.plan_id = p.id
 WHERE s.status = 'active'
-GROUP BY p.name;
+GROUP BY p.name
+ORDER BY monthly_recurring_revenue DESC;
 ```
 
-### Conversion Funnel
-```sql
--- Free to Paid Conversion Analysis
-WITH conversion_funnel AS (
-    SELECT 
-        COUNT(DISTINCT u.id) as total_signups,
-        COUNT(DISTINCT CASE WHEN s.plan_id != 1 THEN u.id END) as paid_conversions
-    FROM users u
-    LEFT JOIN subscriptions s ON u.id = s.user_id AND s.status = 'active'
-)
-SELECT 
-    total_signups,
-    paid_conversions,
-    ROUND(paid_conversions * 100.0 / total_signups, 2) as conversion_rate_pct
-FROM conversion_funnel;
-```
+Run it via `psql`, or from Python/Jupyter with `pandas.read_sql(query, engine)` — the notebook is already connected to the database.
 
-### Retention Analysis
-```sql
--- Cohort Retention by Plan
-SELECT 
-    DATE_TRUNC('month', u.created_at) as cohort_month,
-    p.name as plan,
-    COUNT(DISTINCT u.id) as cohort_size,
-    COUNT(DISTINCT CASE 
-        WHEN u.last_login_at >= DATE_TRUNC('month', u.created_at) + INTERVAL '1 month' 
-        THEN u.id 
-    END) * 100.0 / COUNT(DISTINCT u.id) as retention_1_month_pct
-FROM users u
-JOIN subscriptions s ON u.id = s.user_id
-JOIN plans p ON s.plan_id = p.id
-WHERE s.status = 'active'
-GROUP BY DATE_TRUNC('month', u.created_at), p.name
-ORDER BY cohort_month DESC;
-```
+## Quick CLI Dashboard
 
-## 📊 Key Metrics Dashboard
-
-Run these queries in `analytics_queries.sql` to get instant insights:
-
-| Metric | Description |
-|--------|-------------|
-| 💰 **MRR Growth** | Monthly recurring revenue trends |
-| 🔄 **Conversion Rates** | Free-to-paid conversion analysis |
-| 📉 **Churn Analysis** | Customer retention and churn patterns |
-| 👤 **ARPU by Plan** | Average revenue per user segmentation |
-| 🎯 **Activation Funnel** | User onboarding and activation rates |
-| 🌍 **Geographic Performance** | Revenue and conversion by country |
-| 📱 **Channel Attribution** | Marketing channel effectiveness |
-
-
-## 🎯 Sample Analytics Questions Answered
-
-This database schema and query collection can answer **50+ critical SaaS questions**, including:
-
-### 💸 Revenue Questions
-- What's our MRR growth rate by plan?
-- Which plan contributes most to revenue?
-- What's the average LTV by customer segment?
-
-### 🔄 Conversion Questions  
-- What percentage of free users upgrade to paid?
-- How long does it take users to upgrade?
-- Which features drive plan upgrades?
-
-### 📊 Retention Questions
-- How does churn vary by plan?
-- What's our cohort retention at 30/60/90 days?
-- Which user behaviors predict churn?
-
-### 🚀 Growth Questions
-- Which acquisition channels bring the best customers?
-- Where are the biggest funnel drop-offs?
-- How do engagement patterns differ by plan?
-
-*See [`key_questions.md`](key_questions.md) for the complete list of analytics questions.*
-
-## 📁 File Structure
-
-```
-postgres_demo/
-├── 📄 README.md                 # This file
-├── 📊 key_questions.md          # Comprehensive list of analytics questions
-├── 🗄️ schema.sql               # Complete PostgreSQL schema
-├── 📋 sample_data.sql           # Realistic sample data generation
-├── 🔍 analytics_queries.sql     # 50+ analytical SQL queries
-├── 🖼️ generate_erd.py          # Schema diagram generator
-├── ⚙️ setup_database.sh         # One-command setup script
-├── 🔗 docker-compose.yml        # Docker setup (optional)
-└── 📈 schema_diagram.png        # Visual database schema
-```
-
-## 🐳 Docker Alternative
-
-For a completely isolated setup using Docker:
+For a fast metrics snapshot without opening Jupyter:
 
 ```bash
-# Start PostgreSQL with Docker
-docker-compose up -d
-
-# Run setup (connects to Docker instance)
-./setup_database.sh
+python quick_dashboard.py
 ```
 
-## 🔧 Customization
+Reads connection details from environment variables (`PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`), defaulting to the Docker Compose credentials.
 
-### Adding New Metrics
-1. **Extend the schema** in `schema.sql` with new tables or columns
-2. **Update sample data** in `sample_data.sql` to populate new fields
-3. **Write queries** in `analytics_queries.sql` to analyze the new data
-4. **Regenerate ERD** with `python3 generate_erd.py`
+## Generating the Schema Diagram
+
+```bash
+python generate_erd.py
+```
+
+Requires `psycopg2` (for live schema introspection) and Graphviz (for rendering). Outputs `schema_diagram.dot`/`.png`/`.svg`.
+
+## Tech Stack
+
+- **Database**: PostgreSQL 15 (UUIDs, ENUMs, JSONB, views, PL/pgSQL functions)
+- **Analytics & Visualization**: Jupyter, pandas, NumPy, SQLAlchemy, psycopg2, Matplotlib, Seaborn, Plotly
+- **Infrastructure**: Docker, Docker Compose, pgAdmin (optional)
+
+## Using Your Own Data
+
+This project is designed as a template: replace `sample_data.sql` with your own data loading logic (or an ETL pipeline) against the same schema, and every query in `analytics_queries.sql` plus the notebook will work against real production data.
