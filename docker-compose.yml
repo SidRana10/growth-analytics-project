@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: saas_analytics_postgres
+    environment:
+      POSTGRES_DB: saas_analytics_demo
+      POSTGRES_USER: saas_user
+      POSTGRES_PASSWORD: demo_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./sample_data.sql:/docker-entrypoint-initdb.d/02-sample-data.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saas_user -d saas_analytics_demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - saas_network
+
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: saas_analytics_jupyter
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: saas_analytics_demo
+      POSTGRES_USER: saas_user
+      POSTGRES_PASSWORD: demo_password
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./schema.sql:/home/jovyan/work/schema.sql
+      - ./sample_data.sql:/home/jovyan/work/sample_data.sql
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - saas_network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: saas_analytics_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8080:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - saas_network
+    profiles:
+      - pgadmin
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  saas_network:
+    driver: bridge
